@@ -1,0 +1,27 @@
+# Ambientes virtuais
+.venv/
+venv/
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Dados e saídas locais (não versionar PDFs de entrada nem resultados)
+data/
+output/
+!data/.gitkeep
+!output/.gitkeep
+
+# IDE e editores
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
