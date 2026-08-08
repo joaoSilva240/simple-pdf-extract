@@ -41,23 +41,19 @@ def _parse_pages(spec: str) -> set[int]:
         part = part.strip()
         if not part:
             continue
-        if "-" in part:
-            start_str, _, end_str = part.partition("-")
-            try:
-                start, end = int(start_str), int(end_str)
-            except ValueError as exc:
-                raise ValueError(f"página inválida: {part}") from exc
-            if start < 1 or end < start:
-                raise ValueError(f"intervalo inválido: {part}")
-            pages.update(range(start, end + 1))
-        else:
-            try:
-                page = int(part)
-            except ValueError as exc:
-                raise ValueError(f"página inválida: {part}") from exc
-            if page < 1:
-                raise ValueError(f"página inválida: {part}")
-            pages.add(page)
+        bounds = part.split("-")
+        if len(bounds) not in (1, 2):
+            raise ValueError(f"página inválida: {part}")
+        try:
+            if len(bounds) == 1:
+                start = end = int(bounds[0])
+            else:
+                start, end = int(bounds[0]), int(bounds[1])
+        except ValueError as exc:
+            raise ValueError(f"página inválida: {part}") from exc
+        if start < 1 or end < start:
+            raise ValueError(f"intervalo inválido: {part}")
+        pages.update(range(start, end + 1))
     if not pages:
         raise ValueError("nenhuma página válida informada")
     return pages
@@ -242,42 +238,32 @@ def extract_command(
             raise typer.Exit(code=1)
 
     if arquivo.lower() in ("tudo", "all"):
-        pdf_files = _list_pdf_files(data_dir)
-        if not pdf_files:
+        targets = _list_pdf_files(data_dir)
+        if not targets:
             typer.echo(get_message("empty_data_dir", ui_lang, data_dir=data_dir))
             raise typer.Exit(code=1)
+    else:
+        pdf_path = data_dir / arquivo
+        if not pdf_path.exists():
+            typer.echo(get_message("file_not_found", ui_lang, data_dir=data_dir, filename=arquivo))
+            available = _list_pdf_files(data_dir)
+            if available:
+                typer.echo(get_message("available_files", ui_lang))
+                for path in available:
+                    typer.echo(f"  - {path.name}")
+            raise typer.Exit(code=1)
+        targets = [pdf_path]
 
-        for pdf_path in pdf_files:
-            _extract_pdf(
-                pdf_path,
-                output_dir,
-                format_name,
-                ocr_lang,
-                ui_lang,
-                force_ocr=com_ocr,
-                pages=selected_pages,
-            )
-        return
-
-    pdf_path = data_dir / arquivo
-    if not pdf_path.exists():
-        typer.echo(get_message("file_not_found", ui_lang, data_dir=data_dir, filename=arquivo))
-        available = _list_pdf_files(data_dir)
-        if available:
-            typer.echo(get_message("available_files", ui_lang))
-            for path in available:
-                typer.echo(f"  - {path.name}")
-        raise typer.Exit(code=1)
-
-    _extract_pdf(
-        pdf_path,
-        output_dir,
-        format_name,
-        ocr_lang,
-        ui_lang,
-        force_ocr=com_ocr,
-        pages=selected_pages,
-    )
+    for pdf_path in targets:
+        _extract_pdf(
+            pdf_path,
+            output_dir,
+            format_name,
+            ocr_lang,
+            ui_lang,
+            force_ocr=com_ocr,
+            pages=selected_pages,
+        )
 
 
 @app.command("listar")

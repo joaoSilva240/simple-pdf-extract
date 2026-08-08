@@ -28,9 +28,3 @@ class NativeExtractor:
             extracted.append(Page(number=index, text=text, method=ExtractionMethod.NATIVE))
 
         return ExtractedDocument(source=pdf_path, pages=extracted)
-
-    def __enter__(self) -> NativeExtractor:
-        return self
-
-    def __exit__(self, *exc: object) -> None:
-        return None

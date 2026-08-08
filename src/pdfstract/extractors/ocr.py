@@ -54,9 +54,3 @@ class OCRExtractor:
         grayscale = image.convert("L")
         scaled = grayscale.resize((grayscale.width * 2, grayscale.height * 2), Image.LANCZOS)
         return pytesseract.image_to_string(scaled, lang=self.lang) or ""
-
-    def __enter__(self) -> OCRExtractor:
-        return self
-
-    def __exit__(self, *exc: object) -> None:
-        return None
