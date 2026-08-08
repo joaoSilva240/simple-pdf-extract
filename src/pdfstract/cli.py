@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
 import typer
-from typing_extensions import Annotated
 
 from pdfstract.domain.config import (
     DEFAULT_DATA_DIR,
