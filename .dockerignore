@@ -1,0 +1,29 @@
+# Ambientes virtuais
+.venv
+venv
+
+# Cache Python
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+
+# Git
+.git
+
+# Dados e saídas locais
+data
+output
+uploads
+
+# IDE e editores
+.idea
+.vscode
+
+# Arquivos temporários
+*.swp
+*.swo
+
+# Sistema operacional
+.DS_Store
+Thumbs.db

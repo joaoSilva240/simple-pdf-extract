@@ -1,0 +1,11 @@
+﻿services:
+  pdfstract:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./output:/app/output
+    restart: unless-stopped

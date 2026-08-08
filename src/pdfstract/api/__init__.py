@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from flask import Flask, jsonify
@@ -36,5 +37,10 @@ def create_app(
 
 
 def main() -> None:
-    """Run the pdfstract API server on 127.0.0.1:5000."""
-    create_app().run(host="127.0.0.1", port=5000)
+    """Run the pdfstract API server."""
+    host = os.environ.get("PDFSTRACT_HOST", "127.0.0.1")
+    try:
+        port = int(os.environ.get("PDFSTRACT_PORT", "5000"))
+    except ValueError:
+        port = 5000
+    create_app().run(host=host, port=port)

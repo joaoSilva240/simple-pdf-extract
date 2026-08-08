@@ -106,6 +106,39 @@ curl http://127.0.0.1:5000/api/health
 # {"status": "ok"}
 ```
 
+## Docker
+
+A API também pode rodar em um container. O `Dockerfile` é multi-stage: o stage de build usa a imagem oficial do `uv` para instalar apenas as dependências de produção (via `uv sync --frozen --no-dev`), e o stage runtime usa `python:3.12-slim-bookworm` com as bibliotecas de sistema necessárias para `onnxruntime` e `opencv-python` (dependência do `rapidocr`).
+
+### Como buildar e subir
+
+```bash
+docker compose up --build
+```
+
+O servidor sobe em `http://127.0.0.1:5000` (o container expõe a porta `5000` e o host é configurado via `PDFSTRACT_HOST=0.0.0.0`).
+
+### Como testar
+
+```bash
+curl http://127.0.0.1:5000/api/health
+# {"status": "ok"}
+```
+
+### Exemplo de extração via curl
+
+```bash
+# Extrair um PDF e baixar o .md
+curl -F "file=@data/Zombiecide.pdf" http://127.0.0.1:5000/api/extract
+
+# Forçar OCR
+curl -F "file=@data/Zombiecide.pdf" -F "com_ocr=true" http://127.0.0.1:5000/api/extract
+```
+
+### Volumes
+
+As pastas `uploads/` e `output/` são montadas como volumes do host (`./uploads:/app/uploads` e `./output:/app/output`), ficando acessíveis na máquina local e sobrevivendo a `docker compose down`/`up`.
+
 ## Estrutura do projeto
 
 ```
