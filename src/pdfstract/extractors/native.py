@@ -5,24 +5,29 @@ from __future__ import annotations
 from pathlib import Path
 
 from pypdf import PdfReader
-from pypdf.errors import PdfReadError
 
-from pdfstract.domain.models import ExtractionMethod, ExtractedDocument, Page
+from pdfstract.domain.models import ExtractedDocument, ExtractionMethod, Page
 
 
 class NativeExtractor:
     """Extract text from digital PDFs using pypdf."""
 
-    def extract(self, pdf_path: Path) -> ExtractedDocument:
-        """Extract text from every page of *pdf_path*."""
+    def extract(
+        self,
+        pdf_path: Path,
+        pages: set[int] | None = None,
+    ) -> ExtractedDocument:
+        """Extract text from *pdf_path*, optionally only from the given 1-based page numbers."""
         reader = PdfReader(str(pdf_path))
-        pages: list[Page] = []
+        extracted: list[Page] = []
 
         for index, page in enumerate(reader.pages, start=1):
+            if pages is not None and index not in pages:
+                continue
             text = page.extract_text() or ""
-            pages.append(Page(number=index, text=text, method=ExtractionMethod.NATIVE))
+            extracted.append(Page(number=index, text=text, method=ExtractionMethod.NATIVE))
 
-        return ExtractedDocument(source=pdf_path, pages=pages)
+        return ExtractedDocument(source=pdf_path, pages=extracted)
 
     def __enter__(self) -> NativeExtractor:
         return self

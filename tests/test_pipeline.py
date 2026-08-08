@@ -42,7 +42,10 @@ class TestExtractionPipeline:
         fake_image = MagicMock()
 
         with (
-            patch("pdfstract.extractors.ocr.convert_from_path", return_value=[fake_image, fake_image]),
+            patch(
+                "pdfstract.extractors.ocr.convert_from_path",
+                return_value=[fake_image, fake_image],
+            ),
             patch(
                 "pdfstract.extractors.ocr.pytesseract.image_to_string",
                 return_value="forced OCR",
@@ -52,3 +55,31 @@ class TestExtractionPipeline:
 
         assert document is not None
         assert all(page.method == ExtractionMethod.OCR for page in document.pages)
+
+    def test_extract_with_selected_pages_returns_only_those_pages(self, sample_pdf: Path) -> None:
+        pipeline = ExtractionPipeline()
+        document = pipeline.extract(sample_pdf, pages={2})
+
+        assert document is not None
+        assert [page.number for page in document.pages] == [2]
+        assert document.pages[0].method == ExtractionMethod.NATIVE
+
+    def test_extract_with_selected_pages_falls_back_to_ocr_per_page(
+        self,
+        scanned_like_pdf: Path,
+    ) -> None:
+        pipeline = ExtractionPipeline()
+        fake_image = MagicMock()
+
+        with (
+            patch("pdfstract.extractors.ocr.convert_from_path", return_value=[fake_image]),
+            patch(
+                "pdfstract.extractors.ocr.pytesseract.image_to_string",
+                return_value="OCR fallback text",
+            ),
+        ):
+            document = pipeline.extract(scanned_like_pdf, pages={1})
+
+        assert document is not None
+        assert [page.number for page in document.pages] == [1]
+        assert document.pages[0].method == ExtractionMethod.OCR

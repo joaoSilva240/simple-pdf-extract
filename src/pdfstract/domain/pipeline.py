@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from pdfstract.domain.config import MIN_CHARS_FOR_NATIVE
-from pdfstract.domain.models import ExtractionMethod, ExtractedDocument, Page
+from pdfstract.domain.models import ExtractedDocument, ExtractionMethod, Page
 from pdfstract.extractors.native import NativeExtractor
 from pdfstract.extractors.ocr import OCRExtractor
 from pdfstract.i18n import get_message
@@ -27,21 +27,30 @@ class ExtractionPipeline:
         self.min_chars = min_chars
         self.progress_callback = progress_callback
 
-    def extract(self, pdf_path: Path, force_ocr: bool = False) -> ExtractedDocument | None:
-        """Extract text from *pdf_path*, optionally forcing OCR."""
+    def extract(
+        self,
+        pdf_path: Path,
+        force_ocr: bool = False,
+        pages: set[int] | None = None,
+    ) -> ExtractedDocument | None:
+        """Extract text from *pdf_path*, optionally forcing OCR or restricting page selection."""
         self._notify(get_message("start_extraction", self.ui_lang, path=pdf_path))
 
         if force_ocr:
-            return self._extract_with_ocr(pdf_path)
+            return self._extract_with_ocr(pdf_path, pages=pages)
 
-        return self._extract_with_fallback(pdf_path)
+        return self._extract_with_fallback(pdf_path, pages=pages)
 
-    def _extract_with_fallback(self, pdf_path: Path) -> ExtractedDocument | None:
+    def _extract_with_fallback(
+        self,
+        pdf_path: Path,
+        pages: set[int] | None = None,
+    ) -> ExtractedDocument | None:
         native_extractor = NativeExtractor()
         ocr_extractor = OCRExtractor(lang=self.ocr_lang)
 
         try:
-            native_doc = native_extractor.extract(pdf_path)
+            native_doc = native_extractor.extract(pdf_path, pages=pages)
         except Exception as exc:
             self._notify(str(exc))
             return None
@@ -74,11 +83,15 @@ class ExtractionPipeline:
 
         return ExtractedDocument(source=pdf_path, pages=pages)
 
-    def _extract_with_ocr(self, pdf_path: Path) -> ExtractedDocument | None:
+    def _extract_with_ocr(
+        self,
+        pdf_path: Path,
+        pages: set[int] | None = None,
+    ) -> ExtractedDocument | None:
         ocr_extractor = OCRExtractor(lang=self.ocr_lang)
 
         try:
-            doc = ocr_extractor.extract(pdf_path)
+            doc = ocr_extractor.extract(pdf_path, pages=pages)
         except Exception as exc:
             self._notify(get_message("ocr_not_available", self.ui_lang))
             self._notify(str(exc))

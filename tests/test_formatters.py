@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pdfstract.domain.models import ExtractionMethod, ExtractedDocument, Page
+from pdfstract.domain.models import ExtractedDocument, ExtractionMethod, Page
 from pdfstract.formatters.markdown import MarkdownFormatter
 from pdfstract.formatters.plain_text import PlainTextFormatter
 

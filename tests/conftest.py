@@ -6,6 +6,26 @@ from pathlib import Path
 
 import pytest
 from pypdf import PdfWriter
+from pypdf.generic import ContentStream, DecodedStreamObject, DictionaryObject, NameObject
+
+
+def _add_text_page(writer: PdfWriter, text: str) -> None:
+    """Add a page with real extractable text to *writer*."""
+    page = writer.add_blank_page(width=612, height=792)
+
+    stream = DecodedStreamObject()
+    stream.set_data(f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode("latin-1"))
+    page[NameObject("/Contents")] = ContentStream(stream, page)
+
+    font = DictionaryObject(
+        {
+            NameObject("/Type"): NameObject("/Font"),
+            NameObject("/Subtype"): NameObject("/Type1"),
+            NameObject("/BaseFont"): NameObject("/Helvetica"),
+        }
+    )
+    resources = DictionaryObject({NameObject("/Font"): DictionaryObject({NameObject("/F1"): font})})
+    page[NameObject("/Resources")] = resources
 
 
 @pytest.fixture
@@ -14,11 +34,8 @@ def sample_pdf(tmp_path: Path) -> Path:
     pdf_path = tmp_path / "sample.pdf"
     writer = PdfWriter()
 
-    page_1 = writer.add_blank_page(width=612, height=792)
-    page_1.extract_text = lambda: "This is page one with enough text."
-
-    page_2 = writer.add_blank_page(width=612, height=792)
-    page_2.extract_text = lambda: "Página dois com texto suficiente."
+    _add_text_page(writer, "This is page one with enough text.")
+    _add_text_page(writer, "Page two with enough text.")
 
     with pdf_path.open("wb") as f:
         writer.write(f)

@@ -2,21 +2,28 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 
 MESSAGES: dict[str, dict[str, str]] = {
     "pt": {
         "start_extraction": "[INFO] Extraindo: {path}",
-        "page_processed_native": "[INFO] Página {number}: texto nativo ✓",
-        "page_processed_ocr": "[INFO] Página {number}: OCR aplicado ✓ (página escaneada)",
+        "page_processed_native": "[INFO] Página {number}: texto nativo",
+        "page_processed_ocr": "[INFO] Página {number}: OCR aplicado (página escaneada)",
         "page_ocr_error": "[ERRO] Página {number}: falha no OCR — {error}",
         "file_generated": "[OK] Arquivo gerado: {path} ({pages} páginas)",
         "file_not_found": "[ERRO] Arquivo não encontrado em {data_dir}: {filename}",
         "available_files": "Arquivos disponíveis:",
-        "empty_data_dir": "[AVISO] A pasta {data_dir} está vazia ou não existe. Adicione PDFs ou execute `pdfstract ajuda`.",
-        "ocr_not_available": "[ERRO] OCR indisponível. Verifique se Tesseract OCR e Poppler estão instalados.",
+        "empty_data_dir": (
+            "[AVISO] A pasta {data_dir} está vazia ou não existe. "
+            "Adicione PDFs ou execute `pdfstract ajuda`."
+        ),
+        "ocr_not_available": (
+            "[ERRO] OCR indisponível. Verifique se Tesseract OCR e Poppler estão instalados."
+        ),
         "password_protected": "[ERRO] PDF protegido por senha: {path}",
         "processing_summary": "[INFO] Resumo: {native} páginas nativas, {ocr} páginas com OCR",
         "no_pdfs_found": "Nenhum PDF encontrado em {data_dir}.",
+        "invalid_pages": "[ERRO] Lista de páginas inválida: {error}",
         "help_header": "pdfstract — extrai texto de PDFs",
         "help_commands": """
 Comandos disponíveis:
@@ -33,27 +40,37 @@ Opções globais:
   --output-dir PATH                    Pasta de saída (padrão: output)
   --data-dir PATH                      Pasta de entrada (padrão: data)
 
+Opções do comando extrair:
+  --paginas 1,3,5-8                    Extrai apenas as páginas informadas
+
 Exemplos:
   pdfstract extrair relatorio.pdf
   pdfstract extrair relatorio.pdf --formato txt
   pdfstract extrair --com-ocr scan.pdf
   pdfstract extrair scan.pdf --idioma-ocr eng
   pdfstract extrair tudo --formato txt
+  pdfstract extrair relatorio.pdf --paginas 1,3,5-8
 """,
     },
     "en": {
         "start_extraction": "[INFO] Extracting: {path}",
-        "page_processed_native": "[INFO] Page {number}: native text ✓",
-        "page_processed_ocr": "[INFO] Page {number}: OCR applied ✓ (scanned page)",
+        "page_processed_native": "[INFO] Page {number}: native text",
+        "page_processed_ocr": "[INFO] Page {number}: OCR applied (scanned page)",
         "page_ocr_error": "[ERROR] Page {number}: OCR failed — {error}",
         "file_generated": "[OK] File generated: {path} ({pages} pages)",
         "file_not_found": "[ERROR] File not found in {data_dir}: {filename}",
         "available_files": "Available files:",
-        "empty_data_dir": "[WARNING] The {data_dir} folder is empty or does not exist. Add PDFs or run `pdfstract help`.",
-        "ocr_not_available": "[ERROR] OCR unavailable. Please verify that Tesseract OCR and Poppler are installed.",
+        "empty_data_dir": (
+            "[WARNING] The {data_dir} folder is empty or does not exist. "
+            "Add PDFs or run `pdfstract help`."
+        ),
+        "ocr_not_available": (
+            "[ERROR] OCR unavailable. Please verify that Tesseract OCR and Poppler are installed."
+        ),
         "password_protected": "[ERROR] Password-protected PDF: {path}",
         "processing_summary": "[INFO] Summary: {native} native pages, {ocr} OCR pages",
         "no_pdfs_found": "No PDFs found in {data_dir}.",
+        "invalid_pages": "[ERROR] Invalid page list: {error}",
         "help_header": "pdfstract — extract text from PDFs",
         "help_commands": """
 Available commands:
@@ -70,12 +87,16 @@ Global options:
   --output-dir PATH                    Output folder (default: output)
   --data-dir PATH                      Input folder (default: data)
 
+extract command options:
+  --paginas 1,3,5-8                    Extract only the given pages
+
 Examples:
   pdfstract extract report.pdf
   pdfstract extract report.pdf --formato txt
   pdfstract extract --com-ocr scan.pdf
   pdfstract extract scan.pdf --idioma-ocr eng
   pdfstract extract all --formato txt
+  pdfstract extract report.pdf --paginas 1,3,5-8
 """,
     },
 }

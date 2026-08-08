@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytesseract
 from pdf2image import convert_from_path
 from PIL import Image
 
-from pdfstract.domain.models import ExtractionMethod, ExtractedDocument, Page
+from pdfstract.domain.models import ExtractedDocument, ExtractionMethod, Page
 
 
 class OCRExtractor:
@@ -17,16 +18,22 @@ class OCRExtractor:
         self.lang = lang
         self.dpi = dpi
 
-    def extract(self, pdf_path: Path) -> ExtractedDocument:
-        """Extract text from every page of *pdf_path* via OCR."""
-        images = convert_from_path(str(pdf_path), dpi=self.dpi)
-        pages: list[Page] = []
+    def extract(
+        self,
+        pdf_path: Path,
+        pages: set[int] | None = None,
+    ) -> ExtractedDocument:
+        """Extract text from *pdf_path* via OCR, optionally only from the given pages."""
+        if pages is None:
+            images = convert_from_path(str(pdf_path), dpi=self.dpi)
+            extracted: list[Page] = []
+            for index, image in enumerate(images, start=1):
+                text = self._ocr_image(image)
+                extracted.append(Page(number=index, text=text, method=ExtractionMethod.OCR))
+            return ExtractedDocument(source=pdf_path, pages=extracted)
 
-        for index, image in enumerate(images, start=1):
-            text = self._ocr_image(image)
-            pages.append(Page(number=index, text=text, method=ExtractionMethod.OCR))
-
-        return ExtractedDocument(source=pdf_path, pages=pages)
+        extracted = [self.extract_page(pdf_path, page_number) for page_number in sorted(pages)]
+        return ExtractedDocument(source=pdf_path, pages=extracted)
 
     def extract_page(self, pdf_path: Path, page_number: int) -> Page:
         """Extract text from a single page of *pdf_path* via OCR."""
@@ -44,8 +51,6 @@ class OCRExtractor:
 
     def _ocr_image(self, image: Image.Image) -> str:
         """Run Tesseract OCR on a single image."""
-        import pytesseract
-
         grayscale = image.convert("L")
         scaled = grayscale.resize((grayscale.width * 2, grayscale.height * 2), Image.LANCZOS)
         return pytesseract.image_to_string(scaled, lang=self.lang) or ""

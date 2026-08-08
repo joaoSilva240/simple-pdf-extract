@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 
@@ -14,7 +14,6 @@ from pdfstract.domain.config import (
     DEFAULT_OUTPUT_DIR,
     DEFAULT_UI_LANGUAGE,
 )
-from pdfstract.domain.models import ExtractedDocument
 from pdfstract.domain.pipeline import ExtractionPipeline
 from pdfstract.formatters.markdown import MarkdownFormatter
 from pdfstract.formatters.plain_text import PlainTextFormatter
@@ -35,6 +34,52 @@ def _list_pdf_files(data_dir: Path) -> list[Path]:
     return sorted(path for path in data_dir.iterdir() if path.suffix.lower() == ".pdf")
 
 
+def _parse_pages(spec: str) -> set[int]:
+    """Parse a page spec like '1,3,5-8' into a set of 1-based page numbers."""
+    pages: set[int] = set()
+    for part in spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            start_str, _, end_str = part.partition("-")
+            try:
+                start, end = int(start_str), int(end_str)
+            except ValueError as exc:
+                raise ValueError(f"página inválida: {part}") from exc
+            if start < 1 or end < start:
+                raise ValueError(f"intervalo inválido: {part}")
+            pages.update(range(start, end + 1))
+        else:
+            try:
+                page = int(part)
+            except ValueError as exc:
+                raise ValueError(f"página inválida: {part}") from exc
+            if page < 1:
+                raise ValueError(f"página inválida: {part}")
+            pages.add(page)
+    if not pages:
+        raise ValueError("nenhuma página válida informada")
+    return pages
+
+
+def _pages_suffix(pages: set[int]) -> str:
+    """Build a compact filename suffix like '_p1,3,5-8' from a set of page numbers."""
+    if not pages:
+        return ""
+    ordered = sorted(pages)
+    ranges: list[str] = []
+    start = prev = ordered[0]
+    for num in ordered[1:]:
+        if num == prev + 1:
+            prev = num
+            continue
+        ranges.append(str(start) if start == prev else f"{start}-{prev}")
+        start = prev = num
+    ranges.append(str(start) if start == prev else f"{start}-{prev}")
+    return "_p" + ",".join(ranges)
+
+
 def _formatter_for(format_name: str):
     """Return a formatter instance for the requested output format."""
     if format_name == "txt":
@@ -46,10 +91,11 @@ def _output_path_for(
     source: Path,
     output_dir: Path,
     extension: str,
+    suffix: str = "",
 ) -> Path:
     """Build the output file path for a source PDF."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    return output_dir / f"{source.stem}.{extension}"
+    return output_dir / f"{source.stem}{suffix}.{extension}"
 
 
 def _extract_pdf(
@@ -59,6 +105,7 @@ def _extract_pdf(
     ocr_lang: str,
     ui_lang: str,
     force_ocr: bool,
+    pages: set[int] | None = None,
 ) -> Path | None:
     """Run extraction pipeline and write the output file."""
     pipeline = ExtractionPipeline(
@@ -67,12 +114,17 @@ def _extract_pdf(
         progress_callback=typer.echo,
     )
 
-    document = pipeline.extract(pdf_path, force_ocr=force_ocr)
+    document = pipeline.extract(pdf_path, force_ocr=force_ocr, pages=pages)
     if document is None:
         return None
 
     formatter = _formatter_for(format_name)
-    output_path = _output_path_for(pdf_path, output_dir, formatter.extension())
+    output_path = _output_path_for(
+        pdf_path,
+        output_dir,
+        formatter.extension(),
+        suffix=_pages_suffix(pages),
+    )
     formatter.write(document, output_path)
 
     native_count = sum(1 for p in document.pages if p.method.value == "native")
@@ -165,6 +217,13 @@ def extract_command(
         bool,
         typer.Option("--com-ocr", help="Força OCR ignorando extração nativa."),
     ] = False,
+    paginas: Annotated[
+        str | None,
+        typer.Option(
+            "--paginas",
+            help="Páginas a extrair (ex.: 1,3,5-8).",
+        ),
+    ] = None,
 ) -> None:
     """Extrai texto de um ou mais PDFs."""
     config = ctx.obj
@@ -173,6 +232,14 @@ def extract_command(
     format_name = config["formato"]
     output_dir = config["output_dir"]
     data_dir = config["data_dir"]
+
+    selected_pages: set[int] | None = None
+    if paginas:
+        try:
+            selected_pages = _parse_pages(paginas)
+        except ValueError as exc:
+            typer.echo(get_message("invalid_pages", ui_lang, error=str(exc)))
+            raise typer.Exit(code=1)
 
     if arquivo.lower() in ("tudo", "all"):
         pdf_files = _list_pdf_files(data_dir)
@@ -188,6 +255,7 @@ def extract_command(
                 ocr_lang,
                 ui_lang,
                 force_ocr=com_ocr,
+                pages=selected_pages,
             )
         return
 
@@ -208,6 +276,7 @@ def extract_command(
         ocr_lang,
         ui_lang,
         force_ocr=com_ocr,
+        pages=selected_pages,
     )
 
 

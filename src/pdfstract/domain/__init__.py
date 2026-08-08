@@ -9,7 +9,7 @@ from pdfstract.domain.config import (
     MIN_CHARS_FOR_NATIVE,
     OCR_FALLBACK_LANGUAGE,
 )
-from pdfstract.domain.models import ExtractionMethod, ExtractedDocument, Page
+from pdfstract.domain.models import ExtractedDocument, ExtractionMethod, Page
 from pdfstract.domain.pipeline import ExtractionPipeline
 
 __all__ = [
