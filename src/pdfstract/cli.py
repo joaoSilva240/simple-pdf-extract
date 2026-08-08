@@ -14,10 +14,13 @@ from pdfstract.domain.config import (
     DEFAULT_OUTPUT_DIR,
     DEFAULT_UI_LANGUAGE,
 )
+from pdfstract.domain.pages import pages_suffix, parse_pages
 from pdfstract.domain.pipeline import ExtractionPipeline
-from pdfstract.formatters.markdown import MarkdownFormatter
-from pdfstract.formatters.plain_text import PlainTextFormatter
+from pdfstract.domain.service import formatter_for
 from pdfstract.i18n import get_message
+
+_parse_pages = parse_pages
+_pages_suffix = pages_suffix
 
 app = typer.Typer(
     name="pdfstract",
@@ -32,55 +35,6 @@ def _list_pdf_files(data_dir: Path) -> list[Path]:
     if not data_dir.exists():
         return []
     return sorted(path for path in data_dir.iterdir() if path.suffix.lower() == ".pdf")
-
-
-def _parse_pages(spec: str) -> set[int]:
-    """Parse a page spec like '1,3,5-8' into a set of 1-based page numbers."""
-    pages: set[int] = set()
-    for part in spec.split(","):
-        part = part.strip()
-        if not part:
-            continue
-        bounds = part.split("-")
-        if len(bounds) not in (1, 2):
-            raise ValueError(f"página inválida: {part}")
-        try:
-            if len(bounds) == 1:
-                start = end = int(bounds[0])
-            else:
-                start, end = int(bounds[0]), int(bounds[1])
-        except ValueError as exc:
-            raise ValueError(f"página inválida: {part}") from exc
-        if start < 1 or end < start:
-            raise ValueError(f"intervalo inválido: {part}")
-        pages.update(range(start, end + 1))
-    if not pages:
-        raise ValueError("nenhuma página válida informada")
-    return pages
-
-
-def _pages_suffix(pages: set[int]) -> str:
-    """Build a compact filename suffix like '_p1,3,5-8' from a set of page numbers."""
-    if not pages:
-        return ""
-    ordered = sorted(pages)
-    ranges: list[str] = []
-    start = prev = ordered[0]
-    for num in ordered[1:]:
-        if num == prev + 1:
-            prev = num
-            continue
-        ranges.append(str(start) if start == prev else f"{start}-{prev}")
-        start = prev = num
-    ranges.append(str(start) if start == prev else f"{start}-{prev}")
-    return "_p" + ",".join(ranges)
-
-
-def _formatter_for(format_name: str):
-    """Return a formatter instance for the requested output format."""
-    if format_name == "txt":
-        return PlainTextFormatter()
-    return MarkdownFormatter()
 
 
 def _output_path_for(
@@ -114,12 +68,12 @@ def _extract_pdf(
     if document is None:
         return None
 
-    formatter = _formatter_for(format_name)
+    formatter = formatter_for(format_name)
     output_path = _output_path_for(
         pdf_path,
         output_dir,
         formatter.extension(),
-        suffix=_pages_suffix(pages),
+        suffix=pages_suffix(pages),
     )
     formatter.write(document, output_path)
 
@@ -232,7 +186,7 @@ def extract_command(
     selected_pages: set[int] | None = None
     if paginas:
         try:
-            selected_pages = _parse_pages(paginas)
+            selected_pages = parse_pages(paginas)
         except ValueError as exc:
             typer.echo(get_message("invalid_pages", ui_lang, error=str(exc)))
             raise typer.Exit(code=1)

@@ -27,6 +27,7 @@ dependencies = [
     "pdf2image>=1.17.0",
     "pytesseract>=0.3.13",
     "Pillow>=11.0.0",
+    "flask>=3.0.0",
 ]
 
 [project.optional-dependencies]
@@ -37,6 +38,7 @@ dev = [
 
 [project.scripts]
 pdfstract = "pdfstract.cli:app"
+pdfstract-api = "pdfstract.api:main"
 
 [build-system]
 requires = ["hatchling"]
