@@ -2,6 +2,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Typer](https://img.shields.io/badge/Typer-CLI-000000?style=for-the-badge)
+![Flask](https://img.shields.io/badge/Flask-API-000000?style=for-the-badge&logo=flask&logoColor=white)
 ![pypdf](https://img.shields.io/badge/pypdf-extra%C3%A7%C3%A3o%20nativa-FF6B6B?style=for-the-badge)
 ![pdf2image](https://img.shields.io/badge/pdf2image-PDF%20para%20imagem-2196F3?style=for-the-badge)
 ![pytesseract](https://img.shields.io/badge/pytesseract-OCR-4CAF50?style=for-the-badge)
@@ -9,7 +10,7 @@
 ![pytest](https://img.shields.io/badge/pytest-testes-C21325?style=for-the-badge&logo=pytest&logoColor=white)
 ![ruff](https://img.shields.io/badge/ruff-lint-D7FF64?style=for-the-badge&logo=ruff&logoColor=black)
 
-CLI simples para extrair texto de PDFs digitais e escaneados, salvando o resultado em Markdown (`.md`) ou texto puro (`.txt`). A ferramenta roda 100% localmente e tenta primeiro a extração nativa com `pypdf`; se uma página tiver pouco texto, aplica OCR automaticamente com `pdf2image` + `pytesseract`.
+Ferramenta para extrair texto de PDFs digitais e escaneados, salvando o resultado em Markdown (`.md`) ou texto puro (`.txt`). Roda 100% localmente e tenta primeiro a extração nativa com `pypdf`; se uma página tiver pouco texto, aplica OCR automaticamente com `pdf2image` + `pytesseract`. Oferece **CLI** (Typer) e **API HTTP** (Flask).
 
 ## Instalação
 
@@ -17,7 +18,7 @@ CLI simples para extrair texto de PDFs digitais e escaneados, salvando o resulta
 uv sync
 ```
 
-## Uso
+## Uso — CLI
 
 ### Comandos principais
 
@@ -41,6 +42,70 @@ uv sync
 | `--output-dir PATH` | `output` | Pasta onde os arquivos extraídos são salvos |
 | `--data-dir PATH` | `data` | Pasta de entrada dos PDFs |
 
+## API HTTP (Flask)
+
+### Como rodar
+
+```bash
+uv run pdfstract-api
+```
+
+O servidor sobe em `http://127.0.0.1:5000`.
+
+### Rotas
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `POST` | `/api/extract` | Envia um PDF e recebe o resultado extraído como arquivo `.md` (ou `.txt`) |
+| `GET` | `/api/result/<arquivo>` | Baixa um arquivo extraído anteriormente da pasta `output/` |
+| `GET` | `/api/health` | Verifica se o servidor está no ar |
+
+### POST /api/extract
+
+Recebe o PDF via `multipart/form-data` no campo `file`. Campos opcionais:
+
+| Campo | Padrão | Descrição |
+|---|---|---|
+| `formato` | `md` | Formato de saída: `md` ou `txt` |
+| `idioma_ocr` | `por` | Idioma do OCR: `por` ou `eng` |
+| `com_ocr` | `false` | `true` força OCR ignorando extração nativa |
+| `paginas` | — | Páginas a extrair, ex.: `1,3,5-8` |
+
+**Resposta de sucesso**: `200` com o arquivo extraído como download (`Content-Disposition: attachment`).
+
+**Erros**: `400` (arquivo ausente, extensão inválida, formato/páginas inválidos), `413` (arquivo acima de 100 MB), `500` (falha na extração).
+
+**Exemplos de uso:**
+
+```bash
+# Extrair um PDF e baixar o .md
+curl -F "file=@data/Zombiecide.pdf" http://127.0.0.1:5000/api/extract
+
+# Extrair como texto puro
+curl -F "file=@data/Zombiecide.pdf" -F "formato=txt" http://127.0.0.1:5000/api/extract
+
+# Forçar OCR
+curl -F "file=@data/Zombiecide.pdf" -F "com_ocr=true" http://127.0.0.1:5000/api/extract
+
+# Extrair apenas páginas específicas
+curl -F "file=@data/Zombiecide.pdf" -F "paginas=1,3,5-8" http://127.0.0.1:5000/api/extract
+```
+
+### GET /api/result/<arquivo>
+
+Baixa um arquivo já gerado na pasta `output/`:
+
+```bash
+curl -O http://127.0.0.1:5000/api/result/Zombiecide.md
+```
+
+### GET /api/health
+
+```bash
+curl http://127.0.0.1:5000/api/health
+# {"status": "ok"}
+```
+
 ## Estrutura do projeto
 
 ```
@@ -51,14 +116,20 @@ simple-pdf-stract/
 ├── ANALISE_REQUISITOS.md
 ├── data/                     # PDFs de entrada
 ├── output/                   # Arquivos extraídos
+├── uploads/                  # Uploads temporários da API
 ├── src/
 │   └── pdfstract/
 │       ├── __init__.py
 │       ├── cli.py            # Interface de linha de comando (Typer)
 │       ├── i18n.py           # Mensagens em pt/en
+│       ├── api/
+│       │   ├── __init__.py   # create_app() e entrypoint da API
+│       │   └── routes.py     # Rotas /api/extract, /api/result, /api/health
 │       ├── domain/
 │       │   ├── models.py     # Page, ExtractedDocument, ExtractionMethod
 │       │   ├── config.py     # Constantes
+│       │   ├── pages.py      # parse_pages, pages_suffix
+│       │   ├── service.py    # extract_text() reutilizável (CLI + API)
 │       │   └── pipeline.py   # Orquestração nativo → OCR
 │       ├── extractors/
 │       │   ├── native.py     # Extração com pypdf
@@ -69,6 +140,7 @@ simple-pdf-stract/
 │           └── plain_text.py
 └── tests/
     ├── conftest.py
+    ├── test_api.py
     ├── test_cli.py
     ├── test_extractors.py
     ├── test_formatters.py
@@ -89,6 +161,9 @@ uv run pytest
 
 # Verificar a CLI
 uv run pdfstract ajuda
+
+# Subir a API
+uv run pdfstract-api
 ```
 
 ## Limitações
@@ -98,6 +173,7 @@ uv run pdfstract ajuda
 - OCR depende de Tesseract e Poppler instalados corretamente no sistema.
 - Apenas os idiomas `por` e `eng` são suportados no OCR do MVP.
 - PDFs protegidos por senha são reportados como erro e ignorados.
+- A API é síncrona: a requisição `POST /api/extract` só responde após a extração terminar.
 
 ## Licença
 
