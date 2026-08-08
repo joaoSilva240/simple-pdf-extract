@@ -4,13 +4,13 @@
 ![Typer](https://img.shields.io/badge/Typer-CLI-000000?style=for-the-badge)
 ![Flask](https://img.shields.io/badge/Flask-API-000000?style=for-the-badge&logo=flask&logoColor=white)
 ![pypdf](https://img.shields.io/badge/pypdf-extra%C3%A7%C3%A3o%20nativa-FF6B6B?style=for-the-badge)
-![pdf2image](https://img.shields.io/badge/pdf2image-PDF%20para%20imagem-2196F3?style=for-the-badge)
-![pytesseract](https://img.shields.io/badge/pytesseract-OCR-4CAF50?style=for-the-badge)
+![pypdfium2](https://img.shields.io/badge/pypdfium2-PDF%20para%20imagem-2196F3?style=for-the-badge)
+![rapidocr](https://img.shields.io/badge/rapidocr-OCR-4CAF50?style=for-the-badge)
 ![uv](https://img.shields.io/badge/uv-depend%C3%AAncias-29BFF6?style=for-the-badge)
 ![pytest](https://img.shields.io/badge/pytest-testes-C21325?style=for-the-badge&logo=pytest&logoColor=white)
 ![ruff](https://img.shields.io/badge/ruff-lint-D7FF64?style=for-the-badge&logo=ruff&logoColor=black)
 
-Ferramenta para extrair texto de PDFs digitais e escaneados, salvando o resultado em Markdown (`.md`) ou texto puro (`.txt`). Roda 100% localmente e tenta primeiro a extração nativa com `pypdf`; se uma página tiver pouco texto, aplica OCR automaticamente com `pdf2image` + `pytesseract`. Oferece **CLI** (Typer) e **API HTTP** (Flask).
+Ferramenta para extrair texto de PDFs digitais e escaneados, salvando o resultado em Markdown (`.md`) ou texto puro (`.txt`). Roda 100% localmente e tenta primeiro a extração nativa com `pypdf`; se uma página tiver pouco texto, aplica OCR automaticamente com `pypdfium2` + `rapidocr` — **100% Python, sem binários externos** (sem Tesseract/Poppler). Oferece **CLI** (Typer) e **API HTTP** (Flask).
 
 ## Instalação
 
@@ -37,7 +37,7 @@ uv sync
 | Opção | Padrão | Descrição |
 |---|---|---|
 | `--idioma pt\|en` | `pt` | Idioma das mensagens da interface |
-| `--idioma-ocr por\|eng` | `por` | Idioma do Tesseract OCR |
+| `--idioma-ocr por\|eng` | `por` | Idioma do OCR (mantido por compatibilidade; o RapidOCR é multilíngue) |
 | `--formato md\|txt` | `md` | Formato do arquivo de saída |
 | `--output-dir PATH` | `output` | Pasta onde os arquivos extraídos são salvos |
 | `--data-dir PATH` | `data` | Pasta de entrada dos PDFs |
@@ -133,7 +133,7 @@ simple-pdf-stract/
 │       │   └── pipeline.py   # Orquestração nativo → OCR
 │       ├── extractors/
 │       │   ├── native.py     # Extração com pypdf
-│       │   └── ocr.py        # OCR com pdf2image + pytesseract
+│       │   └── ocr.py        # OCR com pypdfium2 + rapidocr
 │       └── formatters/
 │           ├── base.py
 │           ├── markdown.py
@@ -170,8 +170,7 @@ uv run pdfstract-api
 
 - A extração é linear/textual: tabelas complexas, colunas múltiplas e formatação rica não são preservadas.
 - A detecção de página escaneada usa uma heurística simples (menos de 10 caracteres por página).
-- OCR depende de Tesseract e Poppler instalados corretamente no sistema.
-- Apenas os idiomas `por` e `eng` são suportados no OCR do MVP.
+- O OCR usa modelos ONNX embutidos (RapidOCR), sem binários externos — funciona em qualquer sistema com `uv sync`.
 - PDFs protegidos por senha são reportados como erro e ignorados.
 - A API é síncrona: a requisição `POST /api/extract` só responde após a extração terminar.
 
