@@ -2,10 +2,21 @@
 
 from __future__ import annotations
 
+import shutil
+import tempfile
 import uuid
 from pathlib import Path
 
-from flask import Blueprint, Response, current_app, jsonify, request, send_file, send_from_directory
+from flask import (
+    Blueprint,
+    Response,
+    after_this_request,
+    current_app,
+    jsonify,
+    request,
+    send_file,
+    send_from_directory,
+)
 from werkzeug.exceptions import NotFound
 from werkzeug.utils import secure_filename
 
@@ -67,9 +78,17 @@ def extract() -> tuple[dict, int] | Response:
         return jsonify({"error": "Falha na extração do PDF"}), 500
 
     extension = "txt" if format_name == "txt" else "md"
-    output_path = Path(current_app.config["OUTPUT_DIR"]) / f"{upload_id}.{extension}"
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_dir = tempfile.mkdtemp(prefix="pdfstract_")
+    output_path = Path(temp_dir) / f"{upload_id}.{extension}"
     output_path.write_text(text, encoding="utf-8")
+
+    @after_this_request
+    def cleanup(response: Response) -> Response:
+        try:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        except OSError:
+            pass
+        return response
 
     original_stem = Path(secure_filename(upload.filename)).stem or "arquivo"
     mimetype = "text/plain" if extension == "txt" else "text/markdown"

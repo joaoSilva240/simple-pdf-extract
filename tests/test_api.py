@@ -51,6 +51,15 @@ def test_extract_valid_pdf_returns_markdown(client, sample_pdf: Path) -> None:
     assert "This is page one with enough text." in response.get_data(as_text=True)
 
 
+def test_extract_does_not_leave_files_in_output_dir(app, client, sample_pdf: Path) -> None:
+    output_dir = Path(app.config["OUTPUT_DIR"])
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    response = _post_pdf(client, "relatorio.pdf", sample_pdf.read_bytes())
+    assert response.status_code == 200
+    assert list(output_dir.iterdir()) == []
+
+
 def test_get_result_existing_file_returns_200(app, client, tmp_path: Path) -> None:
     output_dir = Path(app.config["OUTPUT_DIR"])
     output_dir.mkdir(parents=True, exist_ok=True)
