@@ -1,19 +1,15 @@
 # pdfstract
 
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Typer](https://img.shields.io/badge/Typer-CLI-000000?style=for-the-badge)
+![pypdf](https://img.shields.io/badge/pypdf-extra%C3%A7%C3%A3o%20nativa-FF6B6B?style=for-the-badge)
+![pdf2image](https://img.shields.io/badge/pdf2image-PDF%20para%20imagem-2196F3?style=for-the-badge)
+![pytesseract](https://img.shields.io/badge/pytesseract-OCR-4CAF50?style=for-the-badge)
+![uv](https://img.shields.io/badge/uv-depend%C3%AAncias-29BFF6?style=for-the-badge)
+![pytest](https://img.shields.io/badge/pytest-testes-C21325?style=for-the-badge&logo=pytest&logoColor=white)
+![ruff](https://img.shields.io/badge/ruff-lint-D7FF64?style=for-the-badge&logo=ruff&logoColor=black)
+
 CLI simples para extrair texto de PDFs digitais e escaneados, salvando o resultado em Markdown (`.md`) ou texto puro (`.txt`). A ferramenta roda 100% localmente e tenta primeiro a extração nativa com `pypdf`; se uma página tiver pouco texto, aplica OCR automaticamente com `pdf2image` + `pytesseract`.
-
-## Pré-requisitos
-
-- [uv](https://docs.astral.sh/uv/) instalado.
-- Python 3.10 ou superior (o projeto usa `>=3.10`).
-- Tesseract OCR instalado no sistema (somente para OCR):
-  - **Windows**: [tesseract-ocr-w64-setup](https://github.com/UB-Mannheim/tesseract/wiki) com pacotes `por` e `eng`.
-  - **Linux**: `sudo apt install tesseract-ocr tesseract-ocr-por tesseract-ocr-eng`.
-  - **macOS**: `brew install tesseract tesseract-lang`.
-- Poppler (usado pelo `pdf2image`):
-  - **Windows**: instale o [poppler-windows](https://github.com/oschwartz10612/poppler-windows/releases) e adicione `bin/` ao `PATH`.
-  - **Linux**: `sudo apt install poppler-utils`.
-  - **macOS**: `brew install poppler`.
 
 ## Instalação
 
@@ -33,29 +29,7 @@ uv sync
 | `pdfstract listar` | `pdfstract list` | Lista PDFs disponíveis em `data/` |
 | `pdfstract ajuda` | `pdfstract help` | Mostra a ajuda |
 
-> **Nota:** a sintaxe multi-palavra `extrair com ocr` é modelada como a flag `--com-ocr` para manter a compatibilidade com o Typer.
-
-### Exemplos
-
-```bash
-# Extrair um PDF digital
-uv run pdfstract extrair relatorio.pdf
-
-# Extrair e salvar como texto puro
-uv run pdfstract extrair relatorio.pdf --formato txt
-
-# Forçar OCR em um arquivo escaneado
-uv run pdfstract extrair --com-ocr scan.pdf
-
-# Processar todos os PDFs da pasta data/
-uv run pdfstract extrair tudo --formato txt
-
-# Listar PDFs disponíveis
-uv run pdfstract listar
-
-# Ajuda em inglês
-uv run pdfstract help --idioma en
-```
+> **Nota:** a sintaxe multi-palavra `extrair com ocr` é modelada como a flag `--com-ocr` para manter a compatibilidade com o Typer. Use `--paginas 1,3,5-8` para extrair apenas páginas específicas.
 
 ### Opções globais
 
@@ -87,7 +61,6 @@ simple-pdf-stract/
 │       │   ├── config.py     # Constantes
 │       │   └── pipeline.py   # Orquestração nativo → OCR
 │       ├── extractors/
-│       │   ├── base.py
 │       │   ├── native.py     # Extração com pypdf
 │       │   └── ocr.py        # OCR com pdf2image + pytesseract
 │       └── formatters/
@@ -96,6 +69,7 @@ simple-pdf-stract/
 │           └── plain_text.py
 └── tests/
     ├── conftest.py
+    ├── test_cli.py
     ├── test_extractors.py
     ├── test_formatters.py
     └── test_pipeline.py
