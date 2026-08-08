@@ -9,6 +9,15 @@ from pdfstract.domain.models import ExtractionMethod
 from pdfstract.domain.pipeline import ExtractionPipeline
 
 
+def _mock_pdf_document(page_count: int) -> MagicMock:
+    document = MagicMock()
+    document.__len__.return_value = page_count
+    page = MagicMock()
+    page.render.return_value.to_pil.return_value = MagicMock()
+    document.__getitem__.return_value = page
+    return document
+
+
 class TestExtractionPipeline:
     def test_sufficient_native_text_skips_ocr(self, sample_pdf: Path) -> None:
         pipeline = ExtractionPipeline()
@@ -22,15 +31,15 @@ class TestExtractionPipeline:
         scanned_like_pdf: Path,
     ) -> None:
         pipeline = ExtractionPipeline()
-        fake_image = MagicMock()
 
         with (
-            patch("pdfstract.extractors.ocr.convert_from_path", return_value=[fake_image]),
             patch(
-                "pdfstract.extractors.ocr.pytesseract.image_to_string",
-                return_value="OCR fallback text",
+                "pdfstract.extractors.ocr.pdfium.PdfDocument",
+                return_value=_mock_pdf_document(1),
             ),
+            patch("pdfstract.extractors.ocr.RapidOCR") as engine_mock,
         ):
+            engine_mock.return_value.return_value.txts = ("OCR fallback text",)
             document = pipeline.extract(scanned_like_pdf, force_ocr=False)
 
         assert document is not None
@@ -39,18 +48,15 @@ class TestExtractionPipeline:
 
     def test_force_ocr_ignores_native_extraction(self, sample_pdf: Path) -> None:
         pipeline = ExtractionPipeline()
-        fake_image = MagicMock()
 
         with (
             patch(
-                "pdfstract.extractors.ocr.convert_from_path",
-                return_value=[fake_image, fake_image],
+                "pdfstract.extractors.ocr.pdfium.PdfDocument",
+                return_value=_mock_pdf_document(2),
             ),
-            patch(
-                "pdfstract.extractors.ocr.pytesseract.image_to_string",
-                return_value="forced OCR",
-            ),
+            patch("pdfstract.extractors.ocr.RapidOCR") as engine_mock,
         ):
+            engine_mock.return_value.return_value.txts = ("forced OCR",)
             document = pipeline.extract(sample_pdf, force_ocr=True)
 
         assert document is not None
@@ -69,15 +75,15 @@ class TestExtractionPipeline:
         scanned_like_pdf: Path,
     ) -> None:
         pipeline = ExtractionPipeline()
-        fake_image = MagicMock()
 
         with (
-            patch("pdfstract.extractors.ocr.convert_from_path", return_value=[fake_image]),
             patch(
-                "pdfstract.extractors.ocr.pytesseract.image_to_string",
-                return_value="OCR fallback text",
+                "pdfstract.extractors.ocr.pdfium.PdfDocument",
+                return_value=_mock_pdf_document(1),
             ),
+            patch("pdfstract.extractors.ocr.RapidOCR") as engine_mock,
         ):
+            engine_mock.return_value.return_value.txts = ("OCR fallback text",)
             document = pipeline.extract(scanned_like_pdf, pages={1})
 
         assert document is not None

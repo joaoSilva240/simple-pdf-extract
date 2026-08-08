@@ -24,8 +24,9 @@ classifiers = [
 dependencies = [
     "typer>=0.15.0",
     "pypdf>=5.0.0",
-    "pdf2image>=1.17.0",
-    "pytesseract>=0.3.13",
+    "rapidocr>=3.0.0",
+    "onnxruntime>=1.17.0",
+    "pypdfium2>=4.0.0",
     "Pillow>=11.0.0",
     "flask>=3.0.0",
 ]

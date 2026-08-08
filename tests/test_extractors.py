@@ -3,13 +3,22 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from PIL import Image
 
-from pdfstract.domain.models import ExtractionMethod
+from pdfstract.domain.models import ExtractionMethod, Page
 from pdfstract.extractors.native import NativeExtractor
 from pdfstract.extractors.ocr import OCRExtractor
+
+
+def _mock_pdf_document(page_count: int) -> MagicMock:
+    document = MagicMock()
+    document.__len__.return_value = page_count
+    page = MagicMock()
+    page.render.return_value.to_pil.return_value = Image.new("RGB", (100, 100), color="white")
+    document.__getitem__.return_value = page
+    return document
 
 
 class TestNativeExtractor:
@@ -45,15 +54,15 @@ class TestOCRExtractor:
             writer.write(f)
 
         extractor = OCRExtractor(lang="por")
-        fake_image = Image.new("RGB", (100, 100), color="white")
 
         with (
-            patch("pdfstract.extractors.ocr.convert_from_path", return_value=[fake_image]),
             patch(
-                "pdfstract.extractors.ocr.pytesseract.image_to_string",
-                return_value="OCR text",
+                "pdfstract.extractors.ocr.pdfium.PdfDocument",
+                return_value=_mock_pdf_document(1),
             ),
+            patch("pdfstract.extractors.ocr.RapidOCR") as engine_mock,
         ):
+            engine_mock.return_value.return_value.txts = ("OCR text",)
             document = extractor.extract(pdf_path)
 
         assert len(document.pages) == 1
@@ -68,15 +77,17 @@ class TestOCRExtractor:
             writer.write(f)
 
         extractor = OCRExtractor(lang="eng")
-        fake_image = Image.new("RGB", (100, 100), color="white")
 
         with (
-            patch("pdfstract.extractors.ocr.convert_from_path", return_value=[fake_image]),
             patch(
-                "pdfstract.extractors.ocr.pytesseract.image_to_string",
-                return_value="page text",
+                "pdfstract.extractors.ocr.pdfium.PdfDocument",
+                return_value=_mock_pdf_document(1),
             ),
+            patch("pdfstract.extractors.ocr.RapidOCR", return_value=MagicMock()),
         ):
+            engine = extractor.engine
+            engine.return_value.txts = ("page text",)
+
             page = extractor.extract_page(pdf_path, page_number=1)
 
         assert page.number == 1
@@ -95,26 +106,18 @@ class TestOCRExtractor:
             writer.write(f)
 
         extractor = OCRExtractor(lang="por")
-        fake_image = Image.new("RGB", (100, 100), color="white")
 
         with (
-            patch(
-                "pdfstract.extractors.ocr.convert_from_path",
-                return_value=[fake_image],
-            ) as convert_mock,
-            patch(
-                "pdfstract.extractors.ocr.pytesseract.image_to_string",
-                side_effect=["page 1", "page 3"],
-            ),
+            patch.object(OCRExtractor, "extract_page") as extract_page_mock,
         ):
+            extract_page_mock.side_effect = [
+                Page(number=1, text="page 1", method=ExtractionMethod.OCR),
+                Page(number=3, text="page 3", method=ExtractionMethod.OCR),
+            ]
             document = extractor.extract(pdf_path, pages={1, 3})
 
         assert [page.number for page in document.pages] == [1, 3]
         assert [page.text for page in document.pages] == ["page 1", "page 3"]
         assert all(page.method == ExtractionMethod.OCR for page in document.pages)
-        # extract_page is called once per selected page, passing first_page=last_page=n
-        convert_calls = [
-            call.kwargs for call in convert_mock.call_args_list if "first_page" in call.kwargs
-        ]
-        assert len(convert_calls) == 2
-        assert sorted(call["first_page"] for call in convert_calls) == [1, 3]
+        # extract_page is called once per selected page
+        assert [call.args[1] for call in extract_page_mock.call_args_list] == [1, 3]
